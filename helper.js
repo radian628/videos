@@ -78,8 +78,8 @@ H.mulberry32 = function (a) {
     }
 }
 
-H.lerp = function (a, b, x) {
-    return a + (b - a) * x;
+H.lerp = function (a, b, factor) {
+    return a + (b - a) * factor;
 }
 
 H.Stopwatch = class Stopwatch {
@@ -1337,4 +1337,60 @@ H.sleep = function (ms, callback) {
         x += 1
     }
     setTimeout(callback, 0);
+}
+
+H.smoothstep = function (x) {
+    x = H.clamp(x, 0, 1);
+    return 3 * Math.pow(x, 2) - 2 * Math.pow(x, 3);
+}
+
+H.smoothstepInterpolate = function (x, a0, a1) {
+    return a0 + H.smoothstep(x) * (a1 - a0);
+}
+
+H.mulberry32Hash = function (a) {
+    var t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+}
+
+H.noise = function (seed, scale) {
+    return function (position) {
+
+        position = new V2(position).div(scale);
+
+        let rand = H.mulberry32Hash;
+
+        let positionInt = new V2(Math.floor(position.x), Math.floor(position.y));
+        let v1 = V2.fromPolar(rand(seed + positionInt.x + 65536 * positionInt.y) * Math.PI * 2, 1);
+        let v2 = V2.fromPolar(rand(seed + positionInt.x + 65536 * positionInt.y + 1) * Math.PI * 2, 1);
+        let v3 = V2.fromPolar(rand(seed + positionInt.x + 65536 * positionInt.y + 65536) * Math.PI * 2, 1);
+        let v4 = V2.fromPolar(rand(seed + positionInt.x + 65536 * positionInt.y + 65537) * Math.PI * 2, 1);
+
+        let o1 = new V2(position).sub(positionInt);
+        let o2 = new V2(o1).sub(new V2(1, 0));
+        let o3 = new V2(o1).sub(new V2(0, 1));
+        let o4 = new V2(o1).sub(new V2(1, 1));
+
+
+        let dot1 = V2.dot(v1, o1);
+        let dot2 = V2.dot(v2, o2);
+        let dot3 = V2.dot(v3, o3);
+        let dot4 = V2.dot(v4, o4);
+
+        //console.log(o1, dot1);
+
+        return H.smoothstepInterpolate(o1.y, H.smoothstepInterpolate(o1.x, dot1, dot2), H.smoothstepInterpolate(o1.x, dot3, dot4));
+    }
+}
+
+H.fractalNoise = function (seed, scale, octaveCount, octaveFactor) {
+    let noises = [];
+    for (let i = 0; octaveCount > i; i++) {
+        noises.push(H.noise(seed + i, scale * Math.pow(octaveFactor, i)));
+    }
+    return function (position) {
+        return noises.map(noiseFunction => noiseFunction(position)).reduce((prev, cur) => prev + cur, 0);
+    }
 }

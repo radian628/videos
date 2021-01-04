@@ -222,6 +222,6 @@ export class V2 {
      * @param {V2} w - Second vector in dot product operation.
      */
     static dot(v, w) {
-        return v.x * w.y + v.x * w.y;
+        return v.x * w.y + v.y * w.x;
     }
 }
